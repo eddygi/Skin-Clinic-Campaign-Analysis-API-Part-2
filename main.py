@@ -85,3 +85,29 @@ def campaign_analysis_csv():
 
     out = pd.concat(frames, ignore_index=True)
     return out.to_csv(index=False)
+
+from fastapi.responses import PlainTextResponse
+import io
+
+@app.get("/campaign-analysis/csv", response_class=PlainTextResponse)
+def campaign_analysis_csv():
+    df = load_data()
+
+    def band(n):
+        return "1-4" if n <= 4 else ("5-8" if n <= 8 else ">8")
+    df["ProductBand"] = df["Unique_Products_Purchased"].apply(band)
+
+    frames = []
+    for title, col, order in [
+        ("Gender", "Gender", None),
+        ("AgeGroup", "AgeGroup", ["<30", "30-50", ">50"]),
+        ("Purchase_Last_Quarter", "Purchase_Last_Quarter", ["Yes", "No"]),
+        ("ProductBand", "ProductBand", ["1-4", "5-8", ">8"]),
+    ]:
+        t = response_rate_table(df, col, order)
+        tmp = pd.DataFrame(t)
+        tmp.insert(0, "Analysis", title)
+        frames.append(tmp)
+
+    out = pd.concat(frames, ignore_index=True)
+    return out.to_csv(index=False)
